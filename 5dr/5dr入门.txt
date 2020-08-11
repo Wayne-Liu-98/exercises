@@ -1,0 +1,38 @@
+计算从20100104开始到20150630的交易信息且把股票限制在每天最大的500只股票中
+
+
+1 利用以上数据计算信号(signal)：
+
+下标i指股票i， 下标d指日期d
+# signal 5dr: 
+sig_{d,i} = - sum(ret_{d+k,i}), k=-1,-2,...,-5  #(每只股票之前5天的收益率之和，再加负号) 即计算每天每股的信号，其中ret_{d,i}是第d天i股的收益率
+return_{d,i} = close_{d,i} /prevclose_{d,i} -1  #已经计算好了，存储在ret1d.tar中
+备注2：当天所使用的收益率来自于前五天，和今天的收益率无关，因为交易的时候并不知道今天的收益率。
+
+2 利用信号完成下列操作：
+
+2.1  即对Signal再加工
+# op操作：  对每天的所有股票的signal值作如下操作，sig(d) 为d日的signal向量
+##2.1.1 rank: 排序 
+sig(d) = 2*（rank(sig(d)) - 0.5）, 对每天所有股票的signal value排序（先映射到[0,1]之间），再转换到[-1,1]之间
+举例如下： 向量转换到[0,1]之间效果为：  sig(d)原始：(1， 10， 100， 10000, 1e8, 1e10 ) ->  sig(d)[0,1] (0,0.2,0.4,0.6,0.8,1) -> sig(d)[-1,1] (-1, -0.6, ... , 1)
+##2.1.2 pow: sig(d, i ) = pow(abs(sig(d, i)), 1.5) * sign(sig(d,i)) , 保持符号的幂函数
+##2.1.3 neutral: 每天每股的signal减去每天每股行业平均signal 行业信息在SWI中
+
+2.2 计算每天每股的权重
+# weight(d, i) = sig（d,i) / sum_i(abs(sig(d,i))) (归一化，绝对值的和为1 ) sum_i(abs(sig(d,i)))指计算每天所有股票signal的绝对值之和 
+备注3：这里的weight的实际值的和可能不为1，绝对值的和为1。
+
+2.3 计算每天的收益率
+# pnl_(d+1) = sum_i( weight(d,i) * return(d+1, i) )
+备注4：这里weight(d,i)的数据来自于d-1,d-2,d-3,d-4,d-5,天，ret(d+1,i)的数据来自于d+1天，因此和d天的收益率无关。因为我们假设d天的收益率数据无法在d+1天开盘时拿到
+
+2.4
+# 计算统计量 验证结果
+## 年化IR： mean(pnl_d) / std(pnl_d) * sqrt(250) 结果应该为3-4 
+## 年化收益： mean(pnl_d) * 250   结果应该为20%左右
+
+
+## 最大回撤： 先计算第d天的累计pnl, 累计收益公式：cum_pnl_d = 第1天的pnl到第d天的pnl的和
+max_draw_down = min_d( cum_pnl_d - max{ i in [1,d] }(cum_pnl_i) )  #某天累计收益减去之前一天最大累计收益 取最小值## 换手率：每天换手 turnover_d = sum_i(abs(weight(d,i) - weight_(d-1,i)) )
+然后再对turnover_d求平均
