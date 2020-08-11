@@ -4,8 +4,8 @@ Introdunction:
 delay.py computes the median of delay of data transferred from the exchanges' (Shanghai and Shenzhen) servers.
 
 The other two pngs shows the structure of the raw data.
-   * ![df_close](https://raw.githubusercontent.com/Wayne-Liu-98/exercises/master/delay_median/orderbook.head().png
-   * ![df_close](https://raw.githubusercontent.com/Wayne-Liu-98/exercises/master/delay_median/trades.head().png
+   * ![orderbook](https://raw.githubusercontent.com/Wayne-Liu-98/exercises/master/delay_median/orderbook.head().png
+   * ![trades](https://raw.githubusercontent.com/Wayne-Liu-98/exercises/master/delay_median/trades.head().png
    * ![df_close](https://raw.githubusercontent.com/Wayne-Liu-98/exercises/master/5dr/df_top.head().png)
 
 Working period:
