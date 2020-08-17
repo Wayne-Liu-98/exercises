@@ -17,6 +17,8 @@ Working period:
 -------------------------
 2020/7/13 to 2020/7/27
 
+modified on 2020/8/13-2020/8/11
+
 Points covered：
 -------------
     1. Web crawling using requests
@@ -27,4 +29,6 @@ Points covered：
     6. argparse module and interaction with cmd
     7. This is the first project where the author learns PEP and coding conventions
     8. Handling try-except sentences
+    9. The usage of decorator
+    10. List comprehensions
     

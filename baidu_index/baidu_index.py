@@ -13,6 +13,7 @@ import logging
 import argparse
 import datetime
 import requests
+import line_profiler
 import numpy as np
 import pandas as pd
 from log import get_my_logger
@@ -37,7 +38,7 @@ class Cookies:
     def add_cookie():
         Cookies.__driver.delete_all_cookies()
         with open('G:/Innoasset/003_First_Trial_Web_Scraping/cookies.json', 'r',
-                  encoding='utf-8') as f:
+                  encoding='utf-8') as f:   
             list_cookies = json.loads(f.read())
         for i in list_cookies:
             Cookies.__driver.add_cookie(i)
@@ -53,23 +54,18 @@ class Cookies:
         cls.save_cookie()
         df = pd.read_json('G:/Innoasset/003_First_Trial_Web_Scraping/cookies.json')
         df['name=value'] = df['name'].apply(lambda x: x+'=') + df['value']
+        cls.__driver.close()
         return ";".join(df['name=value'])
 
 
 class Crawler:
     @staticmethod
-    def decrypt(t, e):
-        n = list(t)
-        a = {}
-        result = []
-        ln = int(len(n) / 2)
-        start = n[ln:]
-        end = n[:ln]
-        for j, k in zip(start, end):
-            a.update({k: j})
-        for j in e:
-            result.append(a.get(j))
-        return ''.join(result)
+    def decrypt(key_val_lst, txt):
+        key_val_lst = list(key_val_lst)
+        key_len = int(len(key_val_lst)/2)
+        key_val_dict = dict(zip(key_val_lst[:key_len], key_val_lst[key_len:]))
+        return "".join([key_val_dict[key] for key in txt])
+
 
     @staticmethod
     def get_ptbk(uniqid):
@@ -93,7 +89,8 @@ class Crawler:
             logger.error('获取uniqid失败')
             sys.exit(1)
         return resp.json().get('data')
-    
+
+
     @classmethod
     def get_index_data(cls, keyword, start='2011-12-27', end='2011-12-27'):
         word_param = f'[[%7B"name":"{keyword}","wordType":1%7D]]'
@@ -189,19 +186,8 @@ class Input:
         time_intervals = np.array(data)
         time_intervals.shape = (int(len(data)/2), 2)
         return time_intervals
-    
-    
-    # Generate date list for indexing our results later.
-    def date_list(self):
-        start = parse(self.start).date()
-        end = parse(self.end).date()
-        dates_list = [start.strftime('%Y-%m-%d')]
-        while start < end:
-            start = start + datetime.timedelta(days=1)
-            dates_list = dates_list + [start.strftime('%Y-%m-%d')]
-        return dates_list
-    
-    
+
+
     # Convert inputs to final form.
     def inputs_mode_control(self):
         if not self.is_time_valid():
@@ -242,7 +228,8 @@ class Input:
 
     # Request data and generate DataFrame.
     def df_generate(self):
-        result = {'date':self.date_list()}
+        #result = {'date':self.date_list()}
+        result = {'date':pd.date_range(self.start,self.end)}
         periods = self.take_part()
     
         for word in self.keywords:
@@ -251,7 +238,8 @@ class Input:
                 column = column + Crawler.get_index_data(keyword=word,
                                                  start=periods[j][0],
                                                  end=periods[j][1])
-                time.sleep(random.random()*5)
+                if j != 0:
+                    time.sleep(random.random()*5)
             result.update({word: column})
     
         try:
@@ -267,19 +255,36 @@ class Input:
                                available yet, maybe because of weekends.""")
                 df = pd.DataFrame(result)
         return df
-    
-    
+
+
+    def csv_decorator(func):
+        
+        def wrapper(self):
+            df = func(self)
+            if df is None:
+                return None
+            if len(df) > 100:
+                df.to_csv(f"BaiduIndex_{self.title}.csv", encoding='utf-8', index=False)
+            else:
+                df.to_csv(f"BaiduIndex_{self.title}.csv", encoding='utf-8', mode='a',
+                          index=False, header=None)
+        return wrapper
+
+
     # Generate csv file with df in hand according to mode.
+    @csv_decorator
     def csv_generate(self):
         df = self.df_generate()
         if self.mode == 'history':
-            df.to_csv(f"BaiduIndex_{self.title}.csv", encoding='utf-8', index=False)
+            return df
+            #df.to_csv(f"BaiduIndex_{self.title}.csv", encoding='utf-8', index=False)
     
         elif self.mode == 'realtime':
             df_old = pd.read_csv(f"BaiduIndex_{self.title}.csv")
             if len(df.date) > 0:
-                df.to_csv(f"BaiduIndex_{self.title}.csv", encoding='utf-8', mode='a',
-                          index=False, header=None)
+                return df
+                # df.to_csv(f"BaiduIndex_{self.title}.csv", encoding='utf-8', mode='a',
+                #           index=False, header=None)
             else:
                 logger.warning("So nothing to update.")
     
@@ -320,5 +325,3 @@ if __name__ == "__main__":
         
         if SUCCEED:
             inputs.csv_generate()
-            
-        
